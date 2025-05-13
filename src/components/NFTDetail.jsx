@@ -13,7 +13,7 @@ const NFTDetail = () => {
     <div className="container mx-auto px-4 py-8">
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
+        className="mb-6 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors hover:scale-105 hover:shadow-lg duration-300 hover:cursor-pointer"
       >
         ← Back
       </button>

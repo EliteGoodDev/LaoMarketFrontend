@@ -1,15 +1,43 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { useWeb3 } from '../context/Web3Context';
 import FilterSidebar from './FilterSidebar';
 import NFTGrid from './NFTGrid';
 
 const Dashboard = () => {
   const { isLoading, error, totalSupply, allTraits } = useWeb3();
+  const { nfts } = useWeb3();
+  const [filteredNfts, setFilteredNfts] = useState(nfts);
   const [activeFilters, setActiveFilters] = useState({
     priceRange: '',
     sortBy: 'newest',
     traits: {}
   });
+
+  useEffect(() => {
+    const sortedNfts = (activeFilters.sortBy === 'newest') ? nfts.sort((a, b) => a.id - b.id) : (activeFilters.sortBy === 'oldest') ? nfts.sort((a, b) => b.id - a.id) : (activeFilters.sortBy === 'price-low') ? nfts.sort((a, b) => a.price - b.price) : nfts.sort((a, b) => b.price - a.price);
+
+    const priceFilteredNfts = sortedNfts.filter(nft => {
+      if (activeFilters.priceRange === '') {
+        return true;
+      }
+      const price = parseFloat(nft.price);
+      const priceRange = activeFilters.priceRange.split('-');
+      const minPrice = parseFloat(priceRange[0]);
+      const maxPrice = parseFloat(priceRange[1]);
+      return price >= minPrice && price <= maxPrice;
+    });
+
+    const traitFilteredNfts = priceFilteredNfts.filter(nft => {
+      return Object.keys(activeFilters.traits).every(trait => {
+        if(activeFilters.traits[trait] === '') {
+          return true;
+        }
+        return nft.traits[trait] === activeFilters.traits[trait];
+      });
+    });
+
+    setFilteredNfts(traitFilteredNfts);
+  }, [nfts, activeFilters]);
 
   const handleFilterChange = (newFilters) => {
     setActiveFilters(newFilters);
@@ -24,6 +52,7 @@ const Dashboard = () => {
             <div>
               <h2 className="text-3xl font-bold text-white mb-2">Explore Collection</h2>
               <p className="text-gray-400">Total NFTs: {totalSupply}</p>
+              <p className="text-gray-400">Filtered NFTs: {filteredNfts.length}</p>
             </div>
             {isLoading && (
               <div className="flex items-center text-white">
@@ -41,7 +70,7 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        <NFTGrid />
+        <NFTGrid filteredNfts={filteredNfts} />
       </div>
     </div>
   );

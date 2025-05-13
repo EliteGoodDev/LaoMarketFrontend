@@ -1,17 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { useWeb3 } from '../context/Web3Context';
 
-const NFTGrid = () => {
+const NFTGrid = ({ filteredNfts }) => {
   const navigate = useNavigate();
-  const { nfts } = useWeb3();
-
   const handleNFTClick = (nft) => {
     navigate(`/nft/${nft.id}`, { state: { nft } });
   };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {nfts.map((nft) => (
+      {filteredNfts.map((nft) => (
         <div 
           key={nft.id} 
           onClick={() => handleNFTClick(nft)}

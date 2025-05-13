@@ -43,22 +43,6 @@ const FilterSidebar = ({ onFilterChange, traits = {} }) => {
       <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
         Filters
       </h2>
-      
-      {/* Price Range Filter */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-3 text-gray-200">Price Range</h3>
-        <select
-          className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
-          value={filters.priceRange}
-          onChange={e => handleFilterChange('priceRange', e.target.value)}
-        >
-          <option value="">All Prices</option>
-          <option value="0-1">0 - 1 ETH</option>
-          <option value="1-5">1 - 5 ETH</option>
-          <option value="5-10">5 - 10 ETH</option>
-          <option value="10+">10+ ETH</option>
-        </select>
-      </div>
 
       {/* Sort By Filter */}
       <div className="mb-8">
@@ -75,6 +59,24 @@ const FilterSidebar = ({ onFilterChange, traits = {} }) => {
         </select>
       </div>
 
+      
+      {/* Price Range Filter */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-3 text-gray-200">Price Range</h3>
+        <select
+          className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+          value={filters.priceRange}
+          onChange={e => handleFilterChange('priceRange', e.target.value)}
+        >
+          <option value="">All Prices</option>
+          <option value="0-0.1">0 - 0.1 ETH</option>
+          <option value="0.1-0.5">0.1 - 0.5 ETH</option>
+          <option value="0.5-1">0.5 - 1 ETH</option>
+          <option value="1-5">1 - 5 ETH</option>
+        </select>
+      </div>
+
+      
       {/* Dynamic Traits Filter */}
       {Object.keys(traits).length > 0 && (
         <div className="mb-8">

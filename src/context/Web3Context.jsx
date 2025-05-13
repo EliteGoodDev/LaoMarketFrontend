@@ -113,16 +113,11 @@ export const Web3Provider = ({ children }) => {
 
       // Get collection metadata
       const collectionMetadata = await alchemy.nft.getContractMetadata(CONFIG.COLLECTION_ADDRESS);
-      console.log('Collection Metadata:', collectionMetadata);
-
-      // Get all NFTs in the collection
       const nfts = await alchemy.nft.getNftsForContract(CONFIG.COLLECTION_ADDRESS, {
         withMetadata: false,
         limit: 10000 // Adjust this based on your collection size
       });
 
-      console.log('NFTs:', nfts);
-      // Transform the NFT data
       const transformedNFTs = nfts.nfts.map((nft) => {
         return {
           id: nft.tokenId,
@@ -142,9 +137,6 @@ export const Web3Provider = ({ children }) => {
         };
       });
 
-      console.log('Transformed NFTs:', transformedNFTs);
-
-      // Extract all unique traits and their values
       const traitsMap = {};
       transformedNFTs.forEach(nft => {
         Object.entries(nft.traits).forEach(([traitType, value]) => {
