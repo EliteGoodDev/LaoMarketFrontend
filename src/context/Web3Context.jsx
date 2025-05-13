@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { Alchemy } from 'alchemy-sdk';
 import { CONFIG } from '../config';
@@ -104,7 +104,7 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  const fetchCollectionData = async () => {
+  const fetchCollectionData = useCallback(async () => {
     if (!alchemy) return;
 
     try {
@@ -128,7 +128,7 @@ export const Web3Provider = ({ children }) => {
           id: nft.tokenId,
           name: nft.name,
           image: nft.image.originalUrl,
-          price: '0.5', // This should come from your marketplace contract
+          price: (nft.tokenId*0.05).toFixed(2),
           traits: nft.raw?.metadata?.attributes?.reduce((acc, attr) => ({
             ...acc,
             [attr.trait_type.toLowerCase()]: attr.value
@@ -167,12 +167,12 @@ export const Web3Provider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [alchemy, setNfts, setTotalSupply, setAllTraits, setIsLoading, setError]);
 
   // Fetch collection data on mount
   useEffect(() => {
     fetchCollectionData();
-  }, [alchemy]);
+  }, [alchemy, fetchCollectionData]);
 
   const value = {
     account,

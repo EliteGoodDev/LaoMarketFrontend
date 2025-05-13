@@ -68,8 +68,8 @@ const FilterSidebar = ({ onFilterChange, traits = {} }) => {
           value={filters.sortBy}
           onChange={e => handleFilterChange('sortBy', e.target.value)}
         >
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
+          <option value="newest">Token ID: Low to High</option>
+          <option value="oldest">Token ID: High to Low</option>
           <option value="price-low">Price: Low to High</option>
           <option value="price-high">Price: High to Low</option>
         </select>
