@@ -10,5 +10,6 @@ export const CONFIG = {
   ALCHEMY_CONFIG: {
     apiKey: import.meta.env.VITE_ALCHEMY_API_KEY,
     network: Network.ETH_SEPOLIA,
-  }
+  },
+  API_URL: 'http://localhost:3000/api'
 }; 

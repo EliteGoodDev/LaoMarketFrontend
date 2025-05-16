@@ -48,7 +48,7 @@ const FilterSidebar = ({ onFilterChange, traits = {} }) => {
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-3 text-gray-200">Sort By</h3>
         <select
-          className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+          className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all hover:cursor-pointer"
           value={filters.sortBy}
           onChange={e => handleFilterChange('sortBy', e.target.value)}
         >
@@ -64,13 +64,14 @@ const FilterSidebar = ({ onFilterChange, traits = {} }) => {
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-3 text-gray-200">Price Range</h3>
         <select
-          className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+          className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all hover:cursor-pointer"
           value={filters.priceRange}
           onChange={e => handleFilterChange('priceRange', e.target.value)}
         >
           <option value="">All Prices</option>
-          <option value="0-0.1">0 - 0.1 ETH</option>
-          <option value="0.1-0.5">0.1 - 0.5 ETH</option>
+          <option value="0-0.000000000000000001">Not Listed</option>
+          <option value="0.000000000000000001-0.2">0 - 0.2 ETH</option>
+          <option value="0.2-0.5">0.2 - 0.5 ETH</option>
           <option value="0.5-1">0.5 - 1 ETH</option>
           <option value="1-5">1 - 5 ETH</option>
         </select>
@@ -87,7 +88,7 @@ const FilterSidebar = ({ onFilterChange, traits = {} }) => {
                 {traitType}
               </label>
               <select
-                className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                className="w-full p-3 bg-gray-800 text-white border border-pink-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all hover:cursor-pointer"
                 value={filters.traits[traitType] || ''}
                 onChange={e => handleTraitChange(traitType, e.target.value)}
               >

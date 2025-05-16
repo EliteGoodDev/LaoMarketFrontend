@@ -1,9 +1,30 @@
 import { useNavigate } from 'react-router-dom';
+import { Alchemy } from 'alchemy-sdk';
+import { CONFIG } from '../config';
+import { useWeb3 } from '../context/Web3Context';
+import axios from 'axios';
 
 const NFTGrid = ({ filteredNfts }) => {
   const navigate = useNavigate();
-  const handleNFTClick = (nft) => {
-    navigate(`/nft/${nft.id}`, { state: { nft } });
+  const { account } = useWeb3();
+
+  const handleNFTClick = async (nft) => {
+    if (!account) {
+      alert("Please connect your wallet to view the NFT details");
+      return;
+    }
+    let nftListed = (nft.price == 0) ? false : true;
+    let isNftOwner = false;
+    if (nft) {
+      const alchemy = new Alchemy(CONFIG.ALCHEMY_CONFIG);
+      const owners = await alchemy.nft.getOwnersForNft(nft.contract.address, nft.id);
+      const owner = owners.owners[0];
+      if (owner.toLowerCase() == account.toLowerCase()) {
+        isNftOwner = true;
+      }
+    }
+    const offers = await axios.get(`${CONFIG.API_URL}/offers/nft/${nft.id}`).then(res => res.data);
+    navigate(`/nft/${nft.id}`, { state: { nft, nftListed, isNftOwner, offers} });
   };
 
   return (
@@ -30,7 +51,7 @@ const NFTGrid = ({ filteredNfts }) => {
               <div>
                 <p className="text-sm text-gray-400">Current Price</p>
                 <p className="text-lg font-bold bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
-                  {nft.price} ETH
+                  {nft.price == 0 ? "Not Listed" : nft.price + " ETH"}
                 </p>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { ethers } from 'ethers';
 import { Alchemy } from 'alchemy-sdk';
 import { CONFIG } from '../config';
+import axios from 'axios';
 
 const Web3Context = createContext();
 
@@ -118,12 +119,14 @@ export const Web3Provider = ({ children }) => {
         limit: 10000 // Adjust this based on your collection size
       });
 
+      const listedNfts = (await axios.get(`${CONFIG.API_URL}/listnft`)).data;
+
       const transformedNFTs = nfts.nfts.map((nft) => {
         return {
           id: nft.tokenId,
           name: nft.name,
           image: nft.image.originalUrl,
-          price: (nft.tokenId*0.05).toFixed(2),
+          price: 0,
           traits: nft.raw?.metadata?.attributes?.reduce((acc, attr) => ({
             ...acc,
             [attr.trait_type.toLowerCase()]: attr.value
@@ -135,6 +138,12 @@ export const Web3Provider = ({ children }) => {
             totalSupply: nft.contract.totalSupply
           }
         };
+      });
+      listedNfts.forEach(nft => {
+        const nftIndex = transformedNFTs.findIndex(t => t.id == nft.nft_id);
+        if (nftIndex !== -1) {
+          transformedNFTs[nftIndex].price = parseFloat(nft.nft_price);
+        }
       });
 
       const traitsMap = {};
