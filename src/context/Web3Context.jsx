@@ -16,6 +16,8 @@ export const Web3Provider = ({ children }) => {
   const [error, setError] = useState(null);
   const [totalSupply, setTotalSupply] = useState(0);
   const [allTraits, setAllTraits] = useState({});
+  const [marketplaceFee_origin, setMarketplaceFee_origin] = useState(0);
+  const [creatorRoyalty_origin, setCreatorRoyalty_origin] = useState(0);
 
   // Initialize providers
   useEffect(() => {
@@ -105,6 +107,22 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
+  const fetchMarketplaceFee = useCallback(async () => {
+    if (!provider) return;
+    const MARKETPLACE_FEE_ABI = ["function platformFee() view returns (uint256)"];
+    const contract = new ethers.Contract(CONFIG.MARKETPLACE_CONTRACT_ADDRESS, MARKETPLACE_FEE_ABI, provider);
+    const fee = await contract.platformFee();
+    setMarketplaceFee_origin(parseInt(fee));
+  }, [provider]);
+
+  const fetchCreatorRoyalty = useCallback(async () => {
+    if (!provider) return;
+    const ROYALTY_PERCENTAGE_ABI = ["function royaltyPercentage() view returns (uint256)"];
+    const contract = new ethers.Contract(CONFIG.COLLECTION_ADDRESS, ROYALTY_PERCENTAGE_ABI, provider);
+    const royalty = await contract.royaltyPercentage();
+    setCreatorRoyalty_origin(parseInt(royalty));
+  }, [provider]);
+
   const fetchCollectionData = useCallback(async () => {
     if (!alchemy) return;
 
@@ -162,6 +180,7 @@ export const Web3Provider = ({ children }) => {
 
       setNfts(transformedNFTs);
       setTotalSupply(collectionMetadata.totalSupply || transformedNFTs.length);
+      
     } catch (error) {
       console.error('Error fetching collection data:', error);
       setError(error.message);
@@ -175,6 +194,11 @@ export const Web3Provider = ({ children }) => {
     fetchCollectionData();
   }, [alchemy, fetchCollectionData]);
 
+  useEffect(() => {
+    fetchMarketplaceFee();
+    fetchCreatorRoyalty();
+  }, [fetchMarketplaceFee, fetchCreatorRoyalty]);
+
   const value = {
     account,
     provider,
@@ -185,7 +209,9 @@ export const Web3Provider = ({ children }) => {
     totalSupply,
     allTraits,
     connectWallet,
-    fetchCollectionData
+    fetchCollectionData,
+    marketplaceFee_origin,
+    creatorRoyalty_origin
   };
 
   return (

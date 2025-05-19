@@ -2,6 +2,7 @@ import { Network } from 'alchemy-sdk';
 
 export const CONFIG = {
   COLLECTION_ADDRESS: '0xbdd324724ba03b76ed59d0d65a858247cf9a49f4',
+  MARKETPLACE_CONTRACT_ADDRESS: '0xb1becd22581a7e1af444073228153c200af35387',
   NETWORK: Network.ETH_SEPOLIA,
   CHAIN_ID: 11155111, // Sepolia chain ID
   CHAIN_NAME: 'Sepolia Testnet',

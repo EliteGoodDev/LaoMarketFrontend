@@ -44,7 +44,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-screen">
       <FilterSidebar onFilterChange={handleFilterChange} traits={allTraits} />
       <div className="flex-1 h-full overflow-y-auto px-8 py-8">
         <div className="mb-8">
