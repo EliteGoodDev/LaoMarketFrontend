@@ -2,6 +2,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useWeb3 } from '../context/Web3Context';
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
+import axios from 'axios';
+import { CONFIG } from '../config';
 
 const NFTDetail = () => {
   const location = useLocation();
@@ -34,18 +36,80 @@ const NFTDetail = () => {
 
   const handleAcceptOffer = (offer) => {
     alert(`Accept Offer ${offer.nft_offer_address}, ID: ${nft.id}`);
+
+    if(nftListed){
+      axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
+      .then(response => {
+        console.log('NFT unlisted successfully:', response.data);
+      })
+      .catch(error => {
+        console.error('Error unlisting NFT:', error);
+        alert('Failed to unlist NFT. Please try again.');
+      });
+    }
+      const data = {
+        offererAddress: offer.nft_offer_address,
+        nftId: nft.id
+      }
+      axios.delete(`${CONFIG.API_URL}/offers`, {
+        data: data
+      })
+        .then(response => {
+          console.log('NFT offer canceled successfully:', response.data);
+          navigate('/');
+        })
+        .catch(error => {
+          console.error('Error cancel offer NFT:', error);
+          alert('Failed to cancel offer NFT. Please try again.');
+        });
   }
 
   const handleBuyNow = () => {
     alert(`Buy Now ID: ${nft.id} Price: ${nft.price} ETH`);
+    axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
+      .then(response => {
+        console.log('NFT unlisted successfully:', response.data);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error unlisting NFT:', error);
+        alert('Failed to unlist NFT. Please try again.');
+      });
+
   }
 
   const handleUnlistNft = () => {
     alert(`Unlist NFT ID: ${nft.id}`);
+    axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
+      .then(response => {
+        console.log('NFT unlisted successfully:', response.data);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error unlisting NFT:', error);
+        alert('Failed to unlist NFT. Please try again.');
+      });
   }
 
   const handleCancelOffer = () => {
     alert(`Cancel Offer ID: ${nft.id}`);
+
+    const data = {
+      offererAddress: account,
+      nftId: nft.id
+    }
+    
+    axios.delete(`${CONFIG.API_URL}/offers`, {
+      data: data
+    })
+      .then(response => {
+        console.log('NFT offer canceled successfully:', response.data);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error cancel offer NFT:', error);
+        alert('Failed to cancel offer NFT. Please try again.');
+      });
   }
 
   
@@ -90,8 +154,21 @@ const NFTDetail = () => {
       alert("Please enter a valid price");
       return;
     }
-    alert(`List NFT ${nft.id} for ${listPrice} ETH`);
-    setIsModalOpen(false);
+    const data = {
+      listerAddress: account,
+      nftId: nft.id,
+      price: listPrice
+    }
+    axios.post(`${CONFIG.API_URL}/listnft`, data)
+      .then(response => {
+        console.log('NFT listed successfully:', response.data);
+        setIsModalOpen(false);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error listing NFT:', error);
+        alert('Failed to list NFT. Please try again.');
+      });
   };
 
   const handleMakeOffer = () => {
@@ -100,6 +177,22 @@ const NFTDetail = () => {
       return;
     }
     alert(`Make Offer ${nft.id} for ${listPrice} ETH. Expiration: ${offerExpiration}`);
+    const data = {
+      offererAddress: account,
+      nftId: nft.id,
+      price: listPrice,
+      expireTimestamp: offerExpiration
+    }
+    axios.post(`${CONFIG.API_URL}/offers`, data)
+      .then(response => {
+        console.log('NFT offered successfully:', response.data);
+        setIsModalOpen(false);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error offering NFT:', error);
+        alert('Failed to offer NFT. Please try again.');
+      });
     setIsModalOpen(false);
   }
 
@@ -109,6 +202,20 @@ const NFTDetail = () => {
       return;
     }
     alert(`Edit Listing ${nft.id} for ${listPrice} ETH`);
+    const data = {
+      nftId: nft.id,
+      price: listPrice
+    }
+    axios.put(`${CONFIG.API_URL}/listnft`, data)
+      .then(response => {
+        console.log('NFT edited successfully:', response.data);
+        setIsModalOpen(false);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error editing NFT:', error);
+        alert('Failed to edit NFT. Please try again.');
+      });
     setIsModalOpen(false);
   }
 
@@ -118,6 +225,22 @@ const NFTDetail = () => {
       return;
     }
     alert(`Edit Offer ${nft.id} for ${listPrice} ETH. Expiration: ${offerExpiration}`);
+    const data = {
+      offererAddress: account,
+      nftId: nft.id,
+      price: listPrice,
+      expireTimestamp: offerExpiration
+    }
+    axios.put(`${CONFIG.API_URL}/offers`, data)
+      .then(response => {
+        console.log('NFT offer edited successfully:', response.data);
+        setIsModalOpen(false);
+        navigate('/');
+      })
+      .catch(error => {
+        console.error('Error edit offering NFT:', error);
+        alert('Failed to edit offer NFT. Please try again.');
+      });
     setIsModalOpen(false);
   }
 
@@ -162,7 +285,7 @@ const NFTDetail = () => {
               </div>
               {(modalType == "makeOffer" || modalType == "editOffer") && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Expiration Time (days)</span>
+                  <span className="text-gray-400">Expiration Time (30 days)</span>
                   <span className="text-white">
                     {offerExpiration ? 
                       new Date(offerExpiration * 1000).toLocaleString() 
