@@ -2,7 +2,7 @@ import { Network } from 'alchemy-sdk';
 
 export const CONFIG = {
   COLLECTION_ADDRESS: '0xbdd324724ba03b76ed59d0d65a858247cf9a49f4',
-  MARKETPLACE_CONTRACT_ADDRESS: '0xb1becd22581a7e1af444073228153c200af35387',
+  MARKETPLACE_CONTRACT_ADDRESS: '0x145af4d3b84cc79b1352d80786c7aed6b0b87a25',
   NETWORK: Network.ETH_SEPOLIA,
   CHAIN_ID: 11155111, // Sepolia chain ID
   CHAIN_NAME: 'Sepolia Testnet',
@@ -12,5 +12,24 @@ export const CONFIG = {
     apiKey: import.meta.env.VITE_ALCHEMY_API_KEY,
     network: Network.ETH_SEPOLIA,
   },
-  API_URL: 'http://localhost:3000/api'
+  API_URL: 'http://localhost:3000/api',
+  MARKETPLACE_ABI: [
+    "function listNFT(uint256 tokenId, uint256 price) external",
+    "function updateListingPrice(uint256 tokenId, uint256 newPrice) external",
+    "function cancelListing(uint256 tokenId) external",
+    "function makeOffer(uint256 tokenId, uint256 expirationTime) external payable",
+    "function cancelOffer(uint256 tokenId) external",
+    "function buyNFT(uint256 tokenId) external payable",
+    "function acceptOffer(uint256 tokenId, address offerer) external"
+  ],
+  COLLECTION_ABI: [
+    "function ownerOf(uint256 tokenId) external view returns (address)",
+    "function approve(address to, uint256 tokenId) external",
+    "function getApproved(uint256 tokenId) external view returns (address)",
+    "function setApprovalForAll(address operator, bool approved) external",
+    "function isApprovedForAll(address owner, address operator) external view returns (bool)",
+    "function transferFrom(address from, address to, uint256 tokenId) external",
+    "function safeTransferFrom(address from, address to, uint256 tokenId) external"
+  ]
+    
 }; 

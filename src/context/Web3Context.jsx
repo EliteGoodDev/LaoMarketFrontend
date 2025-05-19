@@ -130,8 +130,6 @@ export const Web3Provider = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      // Get collection metadata
-      const collectionMetadata = await alchemy.nft.getContractMetadata(CONFIG.COLLECTION_ADDRESS);
       const nfts = await alchemy.nft.getNftsForContract(CONFIG.COLLECTION_ADDRESS, {
         withMetadata: false,
         limit: 10000 // Adjust this based on your collection size
@@ -179,7 +177,7 @@ export const Web3Provider = ({ children }) => {
       setAllTraits(allTraitsObj);
 
       setNfts(transformedNFTs);
-      setTotalSupply(collectionMetadata.totalSupply || transformedNFTs.length);
+      setTotalSupply(transformedNFTs.length);
       
     } catch (error) {
       console.error('Error fetching collection data:', error);

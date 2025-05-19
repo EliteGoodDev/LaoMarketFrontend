@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Alchemy } from 'alchemy-sdk';
 import { CONFIG } from '../config';
 import { useWeb3 } from '../context/Web3Context';
+import { ethers } from 'ethers';
 import axios from 'axios';
 
 const NFTGrid = ({ filteredNfts }) => {
@@ -16,9 +17,10 @@ const NFTGrid = ({ filteredNfts }) => {
     let nftListed = (nft.price == 0) ? false : true;
     let isNftOwner = false;
     if (nft) {
-      const alchemy = new Alchemy(CONFIG.ALCHEMY_CONFIG);
-      const owners = await alchemy.nft.getOwnersForNft(nft.contract.address, nft.id);
-      const owner = owners.owners[0];
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONFIG.COLLECTION_ADDRESS, CONFIG.COLLECTION_ABI, signer);
+      const owner = await contract.ownerOf(nft.id);
       if (owner.toLowerCase() == account.toLowerCase()) {
         isNftOwner = true;
       }

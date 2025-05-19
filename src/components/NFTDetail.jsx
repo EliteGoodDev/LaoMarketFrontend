@@ -16,7 +16,10 @@ const NFTDetail = () => {
   const [madeOffer, setMadeOffer] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("list");
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showFailModal, setShowFailModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
     offers.forEach(offer => {
@@ -34,18 +37,45 @@ const NFTDetail = () => {
     return <div>Please connect your wallet to view the NFT details</div>;
   }
 
-  const handleAcceptOffer = (offer) => {
-    alert(`Accept Offer ${offer.nft_offer_address}, ID: ${nft.id}`);
+  const getMarketplaceContract = async () => {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    return new ethers.Contract(
+      CONFIG.MARKETPLACE_CONTRACT_ADDRESS,
+      CONFIG.MARKETPLACE_ABI,
+      signer
+    );
+  };
 
+  const getCollectionContract = async () => {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    return new ethers.Contract(
+      CONFIG.COLLECTION_ADDRESS,
+      CONFIG.COLLECTION_ABI,
+      signer
+    );
+  };
+
+  const handleAcceptOffer = async (offer) => {
+    try{
+      setIsLoading(true);
+      const collectionContract = await getCollectionContract();
+      const marketplaceContract = await getMarketplaceContract();
+      const approvedAddress = await collectionContract.getApproved(nft.id);
+      if(approvedAddress.toLowerCase() != CONFIG.MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()){
+        const approveTx = await collectionContract.approve(
+          CONFIG.MARKETPLACE_CONTRACT_ADDRESS, 
+          nft.id
+        );
+        await approveTx.wait();
+        console.log('NFT approved successfully');
+      }
+      const acceptTx = await marketplaceContract.acceptOffer(nft.id, offer.nft_offer_address);
+      await acceptTx.wait();
+      console.log('NFT offer accepted successfully');
     if(nftListed){
-      axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
-      .then(response => {
-        console.log('NFT unlisted successfully:', response.data);
-      })
-      .catch(error => {
-        console.error('Error unlisting NFT:', error);
-        alert('Failed to unlist NFT. Please try again.');
-      });
+      axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`);
     }
       const data = {
         offererAddress: offer.nft_offer_address,
@@ -53,66 +83,94 @@ const NFTDetail = () => {
       }
       axios.delete(`${CONFIG.API_URL}/offers`, {
         data: data
-      })
-        .then(response => {
-          console.log('NFT offer canceled successfully:', response.data);
-          navigate('/');
-        })
-        .catch(error => {
-          console.error('Error cancel offer NFT:', error);
-          alert('Failed to cancel offer NFT. Please try again.');
-        });
-  }
-
-  const handleBuyNow = () => {
-    alert(`Buy Now ID: ${nft.id} Price: ${nft.price} ETH`);
-    axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
-      .then(response => {
-        console.log('NFT unlisted successfully:', response.data);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error unlisting NFT:', error);
-        alert('Failed to unlist NFT. Please try again.');
       });
-
-  }
-
-  const handleUnlistNft = () => {
-    alert(`Unlist NFT ID: ${nft.id}`);
-    axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
-      .then(response => {
-        console.log('NFT unlisted successfully:', response.data);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error unlisting NFT:', error);
-        alert('Failed to unlist NFT. Please try again.');
-      });
-  }
-
-  const handleCancelOffer = () => {
-    alert(`Cancel Offer ID: ${nft.id}`);
-
-    const data = {
-      offererAddress: account,
-      nftId: nft.id
+      setIsLoading(false);
+      setModalMessage('NFT offer accepted successfully');
+      setIsModalOpen(false);
+      setShowSuccessModal(true);
+    }catch(error){
+      console.error('Error accept offer NFT:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to accept offer NFT. Please try again.');
+      setShowFailModal(true);
     }
+  }
+
+  const handleBuyNow = async () => {
+    try{
+      setIsLoading(true);
+      const marketplaceContract = await getMarketplaceContract();
+      const buyTx = await marketplaceContract.buyNFT(nft.id, {value: ethers.parseEther(nft.price.toString())});
+      await buyTx.wait();
+      console.log('NFT bought successfully');
+      axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`);
+      if(madeOffer){
+        const data = {
+          offererAddress: account,
+          nftId: nft.id
+        }
+        axios.delete(`${CONFIG.API_URL}/offers`, {
+          data: data
+        });
+      }
+      setIsLoading(false);
+      setModalMessage('NFT bought successfully');
+      setIsModalOpen(false);
+      setShowSuccessModal(true);
+    }catch(error){
+      console.error('Error buy NFT:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to buy NFT. Please try again.');
+      setShowFailModal(true);
+    }
+  }
+
+  const handleUnlistNft = async () => {
+    try{
+      setIsLoading(true);
+      const marketplaceContract = await getMarketplaceContract();
+      const unlistTx = await marketplaceContract.cancelListing(nft.id);
+      await unlistTx.wait();
+      console.log('NFT unlisted successfully');
+      await axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
+      setIsLoading(false);
+      setModalMessage('NFT unlisted successfully');
+      setShowSuccessModal(true);
+    }catch(error){
+      console.error('Error unlisting NFT:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to unlist NFT. Please try again.');
+      setShowFailModal(true);
+    }
+  }
+
+  const handleCancelOffer = async () => {
+
+    try{
+      setIsLoading(true);
+      const marketplaceContract = await getMarketplaceContract();
+      const offerTx = await marketplaceContract.cancelOffer(nft.id);
+      await offerTx.wait();
+      console.log('NFT offer canceled successfully');
+      const data = {
+        offererAddress: account,
+        nftId: nft.id
+      }
     
     axios.delete(`${CONFIG.API_URL}/offers`, {
       data: data
     })
-      .then(response => {
-        console.log('NFT offer canceled successfully:', response.data);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error cancel offer NFT:', error);
-        alert('Failed to cancel offer NFT. Please try again.');
-      });
+    setIsLoading(false);
+    setModalMessage('Offer canceled successfully');
+    setIsModalOpen(false);
+    setShowSuccessModal(true);
+    }catch(error){
+      console.error('Error cancel offer NFT:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to cancel offer NFT. Please try again.');
+      setShowFailModal(true);
+    }
   }
-
-  
 
   // Add this JSX right before the closing div of the container
   const Modal = () => {
@@ -149,99 +207,170 @@ const NFTDetail = () => {
   }, []);
 
   // Add this function to handle listing
-  const handleListNFT = () => {
+  const handleListNFT = async () => {
     if (listPrice <= 0) {
       alert("Please enter a valid price");
       return;
     }
-    const data = {
-      listerAddress: account,
-      nftId: nft.id,
-      price: listPrice
+
+    try {
+      setIsLoading(true);
+      const collectionContract = await getCollectionContract();
+      const marketplaceContract = await getMarketplaceContract();
+
+      // First approve the marketplace contract
+      const approvedAddress = await collectionContract.getApproved(nft.id);
+        if(approvedAddress.toLowerCase() != CONFIG.MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()){
+          const approveTx = await collectionContract.approve(
+            CONFIG.MARKETPLACE_CONTRACT_ADDRESS, 
+            nft.id
+          );
+        await approveTx.wait();
+        console.log('NFT approved successfully');
+      }
+
+      // Then list the NFT
+      const listTx = await marketplaceContract.listNFT(
+        nft.id, 
+        ethers.parseEther(listPrice.toString())
+      );
+      await listTx.wait();
+      console.log('NFT listed successfully');
+
+      // After successful blockchain transaction, update backend
+      const data = {
+        listerAddress: account,
+        nftId: nft.id,
+        price: listPrice
+      }
+      await axios.post(`${CONFIG.API_URL}/listnft`, data);
+      setIsLoading(false);
+      setModalMessage('NFT listed successfully');
+      setIsModalOpen(false);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error in listing process:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to list NFT. Please try again.');
+      setShowFailModal(true);
     }
-    axios.post(`${CONFIG.API_URL}/listnft`, data)
-      .then(response => {
-        console.log('NFT listed successfully:', response.data);
-        setIsModalOpen(false);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error listing NFT:', error);
-        alert('Failed to list NFT. Please try again.');
-      });
   };
 
-  const handleMakeOffer = () => {
+  const handleMakeOffer = async () => {
     if (listPrice <= 0) {
       alert("Please enter a valid price");
       return;
     }
-    alert(`Make Offer ${nft.id} for ${listPrice} ETH. Expiration: ${offerExpiration}`);
+
+    try {
+      setIsLoading(true);
+      const marketplaceContract = await getMarketplaceContract();
+      const offerTx = await marketplaceContract.makeOffer(
+        nft.id,
+        offerExpiration,
+        { value: ethers.parseEther(listPrice.toString()) }  // Send ETH with the transaction
+      );
+      await offerTx.wait();
+      
+      const data = {
+        offererAddress: account,
+        nftId: nft.id,
+        price: listPrice,
+        expireTimestamp: offerExpiration
+      }
+      await axios.post(`${CONFIG.API_URL}/offers`, data);
+      
+      setIsLoading(false);
+      setModalMessage('Offer made successfully');
+      setIsModalOpen(false);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error in offering process:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to make offer. Please try again.');
+      setShowFailModal(true);
+    }
+  }
+
+  const handleEditListing = async () => {
+    if (listPrice <= 0) {
+      alert("Please enter a valid price");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const collectionContract = await getCollectionContract();
+      const marketplaceContract = await getMarketplaceContract();
+
+      // First approve the marketplace contract
+      const approvedAddress = await collectionContract.getApproved(nft.id);
+        if(approvedAddress.toLowerCase() != CONFIG.MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()){
+          const approveTx = await collectionContract.approve(
+            CONFIG.MARKETPLACE_CONTRACT_ADDRESS, 
+            nft.id
+          );
+        await approveTx.wait();
+        console.log('NFT approved successfully');
+      }
+
+      // Then list the NFT
+      const listTx = await marketplaceContract.updateListingPrice(
+        nft.id, 
+        ethers.parseEther(listPrice.toString())
+      );
+      await listTx.wait();
+      console.log('NFT listed successfully');
+
+      const data = {
+        nftId: nft.id,
+        price: listPrice
+      }
+      await axios.put(`${CONFIG.API_URL}/listnft`, data);
+      setIsLoading(false);
+      setModalMessage('NFT Edited successfully');
+      setIsModalOpen(false);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error in listing process:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to edit NFT. Please try again.');
+      setShowFailModal(true);
+    }
+      
+  }
+
+  const handleEditOffer = async () => {
+    if (listPrice <= 0) {
+      alert("Please enter a valid price");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const marketplaceContract = await getMarketplaceContract();
+      const offerTx = await marketplaceContract.makeOffer(
+        nft.id,
+        offerExpiration,
+        { value: ethers.parseEther(listPrice.toString()) }  // Send ETH with the transaction
+      );
+      await offerTx.wait();
     const data = {
       offererAddress: account,
       nftId: nft.id,
       price: listPrice,
       expireTimestamp: offerExpiration
     }
-    axios.post(`${CONFIG.API_URL}/offers`, data)
-      .then(response => {
-        console.log('NFT offered successfully:', response.data);
-        setIsModalOpen(false);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error offering NFT:', error);
-        alert('Failed to offer NFT. Please try again.');
-      });
-    setIsModalOpen(false);
-  }
-
-  const handleEditListing = () => {
-    if (listPrice <= 0) {
-      alert("Please enter a valid price");
-      return;
+      axios.put(`${CONFIG.API_URL}/offers`, data)
+      setIsLoading(false);
+      setModalMessage('Offer edited successfully');
+      setIsModalOpen(false);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error in offering process:', error);
+      setIsLoading(false);
+      setModalMessage('Failed to edit offer. Please try again.');
+      setShowFailModal(true);
     }
-    alert(`Edit Listing ${nft.id} for ${listPrice} ETH`);
-    const data = {
-      nftId: nft.id,
-      price: listPrice
-    }
-    axios.put(`${CONFIG.API_URL}/listnft`, data)
-      .then(response => {
-        console.log('NFT edited successfully:', response.data);
-        setIsModalOpen(false);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error editing NFT:', error);
-        alert('Failed to edit NFT. Please try again.');
-      });
-    setIsModalOpen(false);
-  }
-
-  const handleEditOffer = () => {
-    if (listPrice <= 0) {
-      alert("Please enter a valid price");
-      return;
-    }
-    alert(`Edit Offer ${nft.id} for ${listPrice} ETH. Expiration: ${offerExpiration}`);
-    const data = {
-      offererAddress: account,
-      nftId: nft.id,
-      price: listPrice,
-      expireTimestamp: offerExpiration
-    }
-    axios.put(`${CONFIG.API_URL}/offers`, data)
-      .then(response => {
-        console.log('NFT offer edited successfully:', response.data);
-        setIsModalOpen(false);
-        navigate('/');
-      })
-      .catch(error => {
-        console.error('Error edit offering NFT:', error);
-        alert('Failed to edit offer NFT. Please try again.');
-      });
-    setIsModalOpen(false);
   }
 
     return (
@@ -314,6 +443,59 @@ const NFTDetail = () => {
       </div>
     );
   };
+
+  const LoadingOverlay = () => (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full mx-4 border border-white/20 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto mb-4"></div>
+        <h2 className="text-xl font-bold text-white">Processing Transaction</h2>
+        <p className="text-gray-400 mt-2">Please wait while we process your transaction...</p>
+      </div>
+    </div>
+  );
+
+  const SuccessModal = () => (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full mx-4 border border-white/20 text-center">
+        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Success!</h2>
+        <p className="text-gray-400">{modalMessage}</p>
+        <button
+          onClick={() => {
+            setShowSuccessModal(false);
+            navigate('/');
+          }}
+          className="mt-6 w-full py-3 px-6 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 hover:cursor-pointer"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+
+  const FailModal = () => (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full mx-4 border border-white/20 text-center">
+        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Error</h2>
+        <p className="text-gray-400">{modalMessage}</p>
+        <button
+          onClick={() => setShowFailModal(false)}
+          className="mt-6 w-full py-3 px-6 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 hover:cursor-pointer"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -451,6 +633,7 @@ const NFTDetail = () => {
         </div>
       </div>
       {/* Offers Table */}
+      {offers.length > 0 && (
       <div className="mt-8">
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white/10 backdrop-blur-lg rounded-xl overflow-hidden border border-white/20">
@@ -497,7 +680,11 @@ const NFTDetail = () => {
           </table>
         </div>
       </div>
+      )}
       {isModalOpen && <Modal />}
+      {isLoading && <LoadingOverlay />}
+      {showSuccessModal && <SuccessModal />}
+      {showFailModal && <FailModal />}
     </div>
   );
 };
