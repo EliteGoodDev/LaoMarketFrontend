@@ -1,10 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { Alchemy } from 'alchemy-sdk';
 import { CONFIG } from '../config';
 import axios from 'axios';
-
-const Web3Context = createContext();
+import { Web3Context } from './context';
 
 export const Web3Provider = ({ children }) => {
   const [account, setAccount] = useState('');
@@ -219,11 +218,3 @@ export const Web3Provider = ({ children }) => {
     </Web3Context.Provider>
   );
 };
-
-export const useWeb3 = () => {
-  const context = useContext(Web3Context);
-  if (!context) {
-    throw new Error('useWeb3 must be used within a Web3Provider');
-  }
-  return context;
-}; 

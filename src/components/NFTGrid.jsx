@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useWeb3 } from '../context/Web3Context';
+import { useWeb3 } from '../context/useWeb3';
 
 const NFTGrid = ({ filteredNfts }) => {
   const navigate = useNavigate();
