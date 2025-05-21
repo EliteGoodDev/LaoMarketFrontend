@@ -197,14 +197,6 @@ export const Web3Provider = ({ children }) => {
     fetchCreatorRoyalty();
   }, [fetchMarketplaceFee, fetchCreatorRoyalty]);
 
-  const refreshData = async () => {
-    try {
-      fetchCollectionData();
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-    }
-  };
-
   const value = {
     account,
     provider,
@@ -212,13 +204,13 @@ export const Web3Provider = ({ children }) => {
     isLoading,
     error,
     nfts,
+    setNfts,
     totalSupply,
     allTraits,
     connectWallet,
     fetchCollectionData,
     marketplaceFee_origin,
     creatorRoyalty_origin,
-    refreshData
   };
 
   return (

@@ -1,9 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Alchemy } from 'alchemy-sdk';
-import { CONFIG } from '../config';
 import { useWeb3 } from '../context/Web3Context';
-import { ethers } from 'ethers';
-import axios from 'axios';
 
 const NFTGrid = ({ filteredNfts }) => {
   const navigate = useNavigate();
@@ -14,19 +10,7 @@ const NFTGrid = ({ filteredNfts }) => {
       alert("Please connect your wallet to view the NFT details");
       return;
     }
-    let nftListed = (nft.price == 0) ? false : true;
-    let isNftOwner = false;
-    if (nft) {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONFIG.COLLECTION_ADDRESS, CONFIG.COLLECTION_ABI, signer);
-      const owner = await contract.ownerOf(nft.id);
-      if (owner.toLowerCase() == account.toLowerCase()) {
-        isNftOwner = true;
-      }
-    }
-    const offers = await axios.get(`${CONFIG.API_URL}/offers/nft/${nft.id}`).then(res => res.data);
-    navigate(`/nft/${nft.id}`, { state: { nft, nftListed, isNftOwner, offers} });
+    navigate(`/nft/${nft.id}`);
   };
 
   return (

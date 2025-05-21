@@ -2,11 +2,9 @@ import { useState,useEffect } from 'react';
 import { useWeb3 } from '../context/Web3Context';
 import FilterSidebar from './FilterSidebar';
 import NFTGrid from './NFTGrid';
-import { useLocation } from 'react-router-dom';
 
 const Dashboard = () => {
-  const location = useLocation();
-  const { isLoading, error, totalSupply, allTraits, refreshData } = useWeb3();
+  const { isLoading, error, totalSupply, allTraits } = useWeb3();
   const { nfts } = useWeb3();
   const [filteredNfts, setFilteredNfts] = useState(nfts);
   const [activeFilters, setActiveFilters] = useState({
@@ -14,12 +12,6 @@ const Dashboard = () => {
     sortBy: 'newest',
     traits: {}
   });
-
-  useEffect(() => {
-    if (refreshData) {
-      refreshData();
-    }
-  }, [location]);
 
   useEffect(() => {
     const sortedNfts = (activeFilters.sortBy === 'newest') ? nfts.sort((a, b) => a.id - b.id) : (activeFilters.sortBy === 'oldest') ? nfts.sort((a, b) => b.id - a.id) : (activeFilters.sortBy === 'price-low') ? nfts.sort((a, b) => a.price - b.price) : nfts.sort((a, b) => b.price - a.price);

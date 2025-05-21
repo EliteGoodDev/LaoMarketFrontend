@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useWeb3 } from '../context/Web3Context';
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
@@ -6,13 +6,16 @@ import axios from 'axios';
 import { CONFIG } from '../config';
 
 const NFTDetail = () => {
-  const location = useLocation();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { account, marketplaceFee_origin, creatorRoyalty_origin } = useWeb3();
-  const [nft, _setNft] = useState(location.state.nft);
-  const [nftListed, _setNftListed] = useState(location.state.nftListed);
-  const [isNftOwner, _setIsNftOwner] = useState(location.state.isNftOwner);
-  const [offers, _setOffers] = useState(location.state.offers);
+
+  const [selectedNft, setSelectedNft] = useState(null);
+  const [isNftOwner, setIsNftOwner] = useState(false);
+  const [nftListed, setNftListed] = useState(false);
+  const [offers, setOffers] = useState([]);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  const { account, marketplaceFee_origin, creatorRoyalty_origin, nfts, connectWallet, setNfts } = useWeb3();
   const [madeOffer, setMadeOffer] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("list");
@@ -22,19 +25,53 @@ const NFTDetail = () => {
   const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
-    offers.forEach(offer => {
-      if (offer.nft_offer_address.toLowerCase() == account.toLowerCase()) {
-        setMadeOffer(true);
+    if (!account) {
+      connectWallet();
+    }
+    setMadeOffer(false);
+    if (offers.length > 0) {
+      offers.forEach(offer => {
+        if (offer.nft_offer_address.toLowerCase() == account.toLowerCase()) {
+          setMadeOffer(true);
+        }
+      });
+    }
+  }, [offers, account, connectWallet]);
+
+  useEffect(() => {
+    async function fetchNftData() {
+        setIsInitializing(true);
+        nfts.forEach(nft => {
+          if (nft.id == id) {
+          setSelectedNft(nft);
+        }
+      });
+      setNftListed(selectedNft && selectedNft.price == 0 ? false: true);
+      setIsNftOwner(false);
+      if (selectedNft) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(CONFIG.COLLECTION_ADDRESS, CONFIG.COLLECTION_ABI, signer);
+        const owner = await contract.ownerOf(selectedNft.id);
+        if (owner.toLowerCase() == account.toLowerCase()) {
+          setIsNftOwner(true);
+        }
       }
-    });
-  }, [offers, account]);
+      if(selectedNft){
+        const offers = await axios.get(`${CONFIG.API_URL}/offers/nft/${selectedNft.id}`).then(res => res.data);
+        setOffers(offers);
+      }
+      else{
+        setOffers([]);
+        setMadeOffer(false);
+      }
+      setIsInitializing(false);
+    }
+    fetchNftData();
+  }, [id, nfts, account, selectedNft]);
 
-  if (!nft) {
+  if (!selectedNft) {
     return <div>NFT not found</div>;
-  }
-
-  if (!account) {
-    return <div>Please connect your wallet to view the NFT details</div>;
   }
 
   const getMarketplaceContract = async () => {
@@ -62,28 +99,40 @@ const NFTDetail = () => {
       setIsLoading(true);
       const collectionContract = await getCollectionContract();
       const marketplaceContract = await getMarketplaceContract();
-      const approvedAddress = await collectionContract.getApproved(nft.id);
+      const approvedAddress = await collectionContract.getApproved(selectedNft.id);
       if(approvedAddress.toLowerCase() != CONFIG.MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()){
         const approveTx = await collectionContract.approve(
           CONFIG.MARKETPLACE_CONTRACT_ADDRESS, 
-          nft.id
+          selectedNft.id
         );
         await approveTx.wait();
         console.log('NFT approved successfully');
       }
-      const acceptTx = await marketplaceContract.acceptOffer(nft.id, offer.nft_offer_address);
+      const acceptTx = await marketplaceContract.acceptOffer(selectedNft.id, offer.nft_offer_address);
       await acceptTx.wait();
       console.log('NFT offer accepted successfully');
     if(nftListed){
-      axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`);
+      axios.delete(`${CONFIG.API_URL}/listnft/${selectedNft.id}`);
+      const newnfts = nfts.map(nft => {
+        if(nft.id == selectedNft.id){
+          return {
+            ...nft,
+            price: 0
+          }
+        }
+        return nft;
+      })
+      setNfts(newnfts);
     }
       const data = {
         offererAddress: offer.nft_offer_address,
-        nftId: nft.id
+        nftId: selectedNft.id
       }
       axios.delete(`${CONFIG.API_URL}/offers`, {
         data: data
       });
+      const newoffers = offers.filter(originaloffer => originaloffer.nft_offer_address != offer.nft_offer_address);
+      setOffers(newoffers);
       setIsLoading(false);
       setModalMessage('NFT offer accepted successfully');
       setIsModalOpen(false);
@@ -100,18 +149,30 @@ const NFTDetail = () => {
     try{
       setIsLoading(true);
       const marketplaceContract = await getMarketplaceContract();
-      const buyTx = await marketplaceContract.buyNFT(nft.id, {value: ethers.parseEther(nft.price.toString())});
+      const buyTx = await marketplaceContract.buyNFT(selectedNft.id, {value: ethers.parseEther(selectedNft.price.toString())});
       await buyTx.wait();
       console.log('NFT bought successfully');
-      axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`);
+      axios.delete(`${CONFIG.API_URL}/listnft/${selectedNft.id}`);
+      const newnfts = nfts.map(nft => {
+        if(nft.id == selectedNft.id){
+          return {
+            ...nft,
+            price: 0
+          }
+        }
+        return nft;
+      })
+      setNfts(newnfts);
       if(madeOffer){
         const data = {
           offererAddress: account,
-          nftId: nft.id
+          nftId: selectedNft.id
         }
         axios.delete(`${CONFIG.API_URL}/offers`, {
           data: data
         });
+        const newoffers = offers.filter(offer => offer.nft_offer_address != account);
+        setOffers(newoffers);
       }
       setIsLoading(false);
       setModalMessage('NFT bought successfully');
@@ -129,10 +190,20 @@ const NFTDetail = () => {
     try{
       setIsLoading(true);
       const marketplaceContract = await getMarketplaceContract();
-      const unlistTx = await marketplaceContract.cancelListing(nft.id);
+      const unlistTx = await marketplaceContract.cancelListing(selectedNft.id);
       await unlistTx.wait();
       console.log('NFT unlisted successfully');
-      await axios.delete(`${CONFIG.API_URL}/listnft/${nft.id}`)
+      await axios.delete(`${CONFIG.API_URL}/listnft/${selectedNft.id}`)
+      const newnfts = nfts.map(nft => {
+        if(nft.id == selectedNft.id){
+          return {
+            ...nft,
+            price: 0
+          }
+        }
+        return nft;
+      })
+      setNfts(newnfts);
       setIsLoading(false);
       setModalMessage('NFT unlisted successfully');
       setShowSuccessModal(true);
@@ -149,17 +220,19 @@ const NFTDetail = () => {
     try{
       setIsLoading(true);
       const marketplaceContract = await getMarketplaceContract();
-      const offerTx = await marketplaceContract.cancelOffer(nft.id);
+      const offerTx = await marketplaceContract.cancelOffer(selectedNft.id);
       await offerTx.wait();
       console.log('NFT offer canceled successfully');
       const data = {
         offererAddress: account,
-        nftId: nft.id
+        nftId: selectedNft.id
       }
     
     axios.delete(`${CONFIG.API_URL}/offers`, {
       data: data
     })
+    const newoffers = offers.filter(offer => offer.nft_offer_address != account);
+    setOffers(newoffers);
     setIsLoading(false);
     setModalMessage('Offer canceled successfully');
     setIsModalOpen(false);
@@ -219,11 +292,11 @@ const NFTDetail = () => {
       const marketplaceContract = await getMarketplaceContract();
 
       // First approve the marketplace contract
-      const approvedAddress = await collectionContract.getApproved(nft.id);
+      const approvedAddress = await collectionContract.getApproved(selectedNft.id);
         if(approvedAddress.toLowerCase() != CONFIG.MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()){
           const approveTx = await collectionContract.approve(
             CONFIG.MARKETPLACE_CONTRACT_ADDRESS, 
-            nft.id
+            selectedNft.id
           );
         await approveTx.wait();
         console.log('NFT approved successfully');
@@ -231,7 +304,7 @@ const NFTDetail = () => {
 
       // Then list the NFT
       const listTx = await marketplaceContract.listNFT(
-        nft.id, 
+        selectedNft.id, 
         ethers.parseEther(listPrice.toString())
       );
       await listTx.wait();
@@ -240,10 +313,20 @@ const NFTDetail = () => {
       // After successful blockchain transaction, update backend
       const data = {
         listerAddress: account,
-        nftId: nft.id,
+        nftId: selectedNft.id,
         price: listPrice
       }
       await axios.post(`${CONFIG.API_URL}/listnft`, data);
+      const newnfts = nfts.map(nft => {
+        if(nft.id == selectedNft.id){
+          return {
+            ...nft,
+            price: listPrice
+          }
+        }
+        return nft;
+      })
+      setNfts(newnfts);
       setIsLoading(false);
       setModalMessage('NFT listed successfully');
       setIsModalOpen(false);
@@ -266,7 +349,7 @@ const NFTDetail = () => {
       setIsLoading(true);
       const marketplaceContract = await getMarketplaceContract();
       const offerTx = await marketplaceContract.makeOffer(
-        nft.id,
+        selectedNft.id,
         offerExpiration,
         { value: ethers.parseEther(listPrice.toString()) }  // Send ETH with the transaction
       );
@@ -274,12 +357,13 @@ const NFTDetail = () => {
       
       const data = {
         offererAddress: account,
-        nftId: nft.id,
+        nftId: selectedNft.id,
         price: listPrice,
         expireTimestamp: offerExpiration
       }
       await axios.post(`${CONFIG.API_URL}/offers`, data);
       
+      setOffers([...offers, {nft_offer_address: account, offer_price: listPrice, expirationTime: offerExpiration}]);
       setIsLoading(false);
       setModalMessage('Offer made successfully');
       setIsModalOpen(false);
@@ -304,11 +388,11 @@ const NFTDetail = () => {
       const marketplaceContract = await getMarketplaceContract();
 
       // First approve the marketplace contract
-      const approvedAddress = await collectionContract.getApproved(nft.id);
+      const approvedAddress = await collectionContract.getApproved(selectedNft.id);
         if(approvedAddress.toLowerCase() != CONFIG.MARKETPLACE_CONTRACT_ADDRESS.toLowerCase()){
           const approveTx = await collectionContract.approve(
             CONFIG.MARKETPLACE_CONTRACT_ADDRESS, 
-            nft.id
+            selectedNft.id
           );
         await approveTx.wait();
         console.log('NFT approved successfully');
@@ -316,17 +400,27 @@ const NFTDetail = () => {
 
       // Then list the NFT
       const listTx = await marketplaceContract.updateListingPrice(
-        nft.id, 
+        selectedNft.id, 
         ethers.parseEther(listPrice.toString())
       );
       await listTx.wait();
       console.log('NFT listed successfully');
 
       const data = {
-        nftId: nft.id,
+        nftId: selectedNft.id,
         price: listPrice
       }
       await axios.put(`${CONFIG.API_URL}/listnft`, data);
+      const newnfts = nfts.map(nft => {
+        if(nft.id == selectedNft.id){
+          return {
+            ...nft,
+            price: listPrice
+          }
+        }
+        return nft;
+      })
+      setNfts(newnfts);
       setIsLoading(false);
       setModalMessage('NFT Edited successfully');
       setIsModalOpen(false);
@@ -349,18 +443,29 @@ const NFTDetail = () => {
       setIsLoading(true);
       const marketplaceContract = await getMarketplaceContract();
       const offerTx = await marketplaceContract.makeOffer(
-        nft.id,
+        selectedNft.id,
         offerExpiration,
         { value: ethers.parseEther(listPrice.toString()) }  // Send ETH with the transaction
       );
       await offerTx.wait();
     const data = {
       offererAddress: account,
-      nftId: nft.id,
+      nftId: selectedNft.id,
       price: listPrice,
       expireTimestamp: offerExpiration
     }
       axios.put(`${CONFIG.API_URL}/offers`, data)
+      const newoffers = offers.map(offer => {
+        if(offer.nft_offer_address == account){
+          return {
+            ...offer,
+            offer_price: listPrice,
+            expirationTime: offerExpiration
+          }
+        }
+        return offer;
+      })
+      setOffers(newoffers);
       setIsLoading(false);
       setModalMessage('Offer edited successfully');
       setIsModalOpen(false);
@@ -454,6 +559,16 @@ const NFTDetail = () => {
     </div>
   );
 
+  const InitializingModal = () => (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full mx-4 border border-white/20 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto mb-4"></div>
+        <h2 className="text-xl font-bold text-white">Loading...</h2>
+        <p className="text-gray-400 mt-2">Please wait while we load the NFT...</p>
+      </div>
+    </div>
+  );
+
   const SuccessModal = () => (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md w-full mx-4 border border-white/20 text-center">
@@ -467,7 +582,6 @@ const NFTDetail = () => {
         <button
           onClick={() => {
             setShowSuccessModal(false);
-            navigate('/');
           }}
           className="mt-6 w-full py-3 px-6 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 hover:cursor-pointer"
         >
@@ -509,19 +623,19 @@ const NFTDetail = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="relative aspect-square rounded-2xl overflow-hidden my-auto">
           <img
-            src={nft.image}
-            alt={nft.name}
+            src={selectedNft.image}
+            alt={selectedNft.name}
             className="w-full h-full object-cover"
           />
         </div>
         
         <div className="space-y-6">
-          <h1 className="text-3xl font-bold text-white">{nft.name}</h1>
+          <h1 className="text-3xl font-bold text-white">{selectedNft.name}</h1>
           
           <div className="bg-white/10 rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4 text-white">Traits</h2>
             <div className="grid grid-cols-2 gap-4">
-              {Object.entries(nft.traits).map(([trait, value]) => (
+              {Object.entries(selectedNft.traits).map(([trait, value]) => (
                 <div key={trait} className="bg-white/5 rounded-lg p-3">
                   <p className="text-sm text-gray-400">{trait}</p>
                   <p className="text-lg font-medium text-white">{value}</p>
@@ -535,7 +649,7 @@ const NFTDetail = () => {
             <div>
               <h2 className="text-xl font-semibold mb-4 text-white">Price</h2>
               <p className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent">
-                {nft.price} ETH
+                {selectedNft.price} ETH
               </p>
             </div>
             :
@@ -685,6 +799,7 @@ const NFTDetail = () => {
       {isLoading && <LoadingOverlay />}
       {showSuccessModal && <SuccessModal />}
       {showFailModal && <FailModal />}
+      {isInitializing && <InitializingModal />}
     </div>
   );
 };

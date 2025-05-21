@@ -1,14 +1,16 @@
 import { useWeb3 } from '../context/Web3Context';
-
+import { useNavigate } from 'react-router-dom';
 const Header = () => {
   const { account, isConnecting, connectWallet } = useWeb3();
+  const navigate = useNavigate();
 
   return (
     <header className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-900 text-white shadow-lg">
       <div className="container mx-auto px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500 cursor-pointer" 
+            onClick={() => navigate('/')}>
               NFT Marketplace
             </h1>
           </div>
