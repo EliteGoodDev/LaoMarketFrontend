@@ -12,7 +12,7 @@ export const CONFIG = {
     apiKey: import.meta.env.VITE_ALCHEMY_API_KEY,
     network: Network.ETH_SEPOLIA,
   },
-  API_URL: 'http://localhost:3000/api',
+  API_URL: import.meta.env.VITE_API_URL,
   MARKETPLACE_ABI: [
     "function listNFT(uint256 tokenId, uint256 price) external",
     "function updateListingPrice(uint256 tokenId, uint256 newPrice) external",
